@@ -10,20 +10,24 @@ public class Chunk : MonoBehaviour
     List<Vector4> tangents;
     List<Vector2> uv;
     List<int> triangles;
+    List<int> transparentTriangles;
     int vert = 0;
 
     ChunkData chunkData;
     Vector3Int chunkSize;
+    MeshFilter meshFilter;
 
     public void InitChunk(ChunkData chunkData, Vector3Int chunkSize)
     {
         this.chunkData = chunkData;
         this.chunkSize = chunkSize;
 
+        meshFilter = GetComponent<MeshFilter>();
+
         GenerateChunk();
     }
 
-    void GenerateChunk()
+    public void GenerateChunk()
     {
         Mesh mesh = new Mesh
         {
@@ -35,6 +39,8 @@ public class Chunk : MonoBehaviour
         tangents = new List<Vector4>();
         uv = new List<Vector2>();
         triangles = new List<int>();
+        transparentTriangles = new List<int>();
+        vert = 0;
 
         for (int y = 0; y < chunkSize.y; y++)
         {
@@ -52,81 +58,98 @@ public class Chunk : MonoBehaviour
             }
         }
 
+        mesh.subMeshCount = 2;
         mesh.vertices = vertices.ToArray();
         mesh.normals = normals.ToArray();
         mesh.tangents = tangents.ToArray();
         mesh.uv = uv.ToArray();
-        mesh.triangles = triangles.ToArray();
+        mesh.SetTriangles(triangles, 0);
+        mesh.SetTriangles(transparentTriangles, 1);
 
-        GetComponent<MeshFilter>().mesh = mesh;
+        mesh.UploadMeshData(true);
+
+        meshFilter.mesh = mesh;
+        GetComponent<MeshCollider>().sharedMesh = mesh;
     }
 
     void GenerateCube(Vector3Int cubePos, ResourceBlock block)
     {
         if (cubePos.z < chunkSize.z - 1)
         {
-            if (chunkData.blocks[cubePos.x, cubePos.y, cubePos.z + 1] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x, cubePos.y, cubePos.z + 1];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.North, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.North);
-            if (neighbor == null || neighbor.blocks[cubePos.x, cubePos.y, 0] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, cubePos.y, 0] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.North, cubePos, block, block.sixSided);
         }
         if (cubePos.x < chunkSize.x - 1)
         {
-            if (chunkData.blocks[cubePos.x + 1, cubePos.y, cubePos.z] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x + 1, cubePos.y, cubePos.z];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.East, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.East);
-            if (neighbor == null || neighbor.blocks[0, cubePos.y, cubePos.z] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[0, cubePos.y, cubePos.z] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.East, cubePos, block, block.sixSided);
         }
         if (cubePos.z > 0)
         {
-            if (chunkData.blocks[cubePos.x, cubePos.y, cubePos.z - 1] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x, cubePos.y, cubePos.z - 1];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.South, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.South);
-            if (neighbor == null || neighbor.blocks[cubePos.x, cubePos.y, chunkSize.z - 1] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, cubePos.y, chunkSize.z - 1] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.South, cubePos, block, block.sixSided);
         }
         if (cubePos.x > 0)
         {
-            if (chunkData.blocks[cubePos.x - 1, cubePos.y, cubePos.z] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x - 1, cubePos.y, cubePos.z];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.West, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.West);
-            if (neighbor == null || neighbor.blocks[chunkSize.x - 1, cubePos.y, cubePos.z] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[chunkSize.x - 1, cubePos.y, cubePos.z] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.West, cubePos, block, block.sixSided);
         }
         if (cubePos.y < chunkSize.y - 1)
         {
-            if (chunkData.blocks[cubePos.x, cubePos.y + 1, cubePos.z] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x, cubePos.y + 1, cubePos.z];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.Up, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.Up);
-            if (neighbor == null || neighbor.blocks[cubePos.x, 0, cubePos.z] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, 0, cubePos.z] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.Up, cubePos, block, block.sixSided);
         }
         if (cubePos.y > 0)
         {
-            if (chunkData.blocks[cubePos.x, cubePos.y - 1, cubePos.z] == -1)
+            int checkBlock = chunkData.blocks[cubePos.x, cubePos.y - 1, cubePos.z];
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.Down, cubePos, block, block.sixSided);
         }
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.Down);
-            if (neighbor == null || neighbor.blocks[cubePos.x, chunkSize.y - 1, cubePos.z] == -1)
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, chunkSize.y - 1, cubePos.z] : -1;
+            if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.Down, cubePos, block, block.sixSided);
         }
     }
@@ -224,12 +247,95 @@ public class Chunk : MonoBehaviour
         uv.Add(sideTexPosMax);
 
         // Triangles
-        triangles.Add(vert + 0);
-        triangles.Add(vert + 2);
-        triangles.Add(vert + 1);
-        triangles.Add(vert + 1);
-        triangles.Add(vert + 2);
-        triangles.Add(vert + 3);
+        if (block.transparent)
+        {
+            transparentTriangles.Add(vert + 0);
+            transparentTriangles.Add(vert + 2);
+            transparentTriangles.Add(vert + 1);
+            transparentTriangles.Add(vert + 1);
+            transparentTriangles.Add(vert + 2);
+            transparentTriangles.Add(vert + 3);
+        }
+        else
+        {
+            triangles.Add(vert + 0);
+            triangles.Add(vert + 2);
+            triangles.Add(vert + 1);
+            triangles.Add(vert + 1);
+            triangles.Add(vert + 2);
+            triangles.Add(vert + 3);
+        }
         vert += 4;
+    }
+
+    public void DestroyBlockAtPos(Vector3 hitPos)
+    {
+        Vector3Int blockPos = new Vector3Int(Mathf.RoundToInt(hitPos.x), Mathf.RoundToInt(hitPos.y), Mathf.RoundToInt(hitPos.z));
+
+        Vector3Int localBlockPos = blockPos - new Vector3Int((int)transform.position.x, (int)transform.position.y, (int)transform.position.z);
+
+        Debug.Log($"BlockPos: {blockPos}, LocalBlockPos: {localBlockPos}");
+
+
+        chunkData.blocks[localBlockPos.x, localBlockPos.y, localBlockPos.z] = -1;
+
+        GenerateChunk();
+
+        if (IsOnEdge(localBlockPos, Direction.North))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 0, 1));
+        if (IsOnEdge(localBlockPos, Direction.South))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 0, -1));
+        if (IsOnEdge(localBlockPos, Direction.East))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(1, 0, 0));
+        if (IsOnEdge(localBlockPos, Direction.West))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(-1, 0, 0));
+        if (IsOnEdge(localBlockPos, Direction.Up))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 1, 0));
+        if (IsOnEdge(localBlockPos, Direction.Down))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, -1, 0));
+    }
+
+    bool IsOnEdge(Vector3Int blockPos, Direction dir)
+    {
+        switch (dir)
+        {
+            case Direction.North:
+                return blockPos.z == chunkSize.z - 1;
+            case Direction.South:
+                return blockPos.z == 0;
+            case Direction.East:
+                return blockPos.x == chunkSize.x - 1;
+            case Direction.West:
+                return blockPos.x == 0;
+            case Direction.Up:
+                return blockPos.y == chunkSize.y - 1;
+            case Direction.Down:
+                return blockPos.y == 0;
+        }
+
+        return false;
+    }
+
+    public void PlaceBlock(Vector3Int blockPos)
+    {
+        blockPos -= chunkData.chunkNum * 16;
+        Debug.Log($"Chunk's Block Pos: {blockPos}");
+
+        chunkData.blocks[blockPos.x, blockPos.y, blockPos.z] = 0;
+
+        GenerateChunk();
+
+        if (IsOnEdge(blockPos, Direction.North))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 0, 1));
+        if (IsOnEdge(blockPos, Direction.South))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 0, -1));
+        if (IsOnEdge(blockPos, Direction.East))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(1, 0, 0));
+        if (IsOnEdge(blockPos, Direction.West))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(-1, 0, 0));
+        if (IsOnEdge(blockPos, Direction.Up))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, 1, 0));
+        if (IsOnEdge(blockPos, Direction.Down))
+            World.Instance.ReloadChunk(chunkData.chunkNum + new Vector3Int(0, -1, 0));
     }
 }

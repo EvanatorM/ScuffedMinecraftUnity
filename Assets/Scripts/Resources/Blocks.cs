@@ -13,7 +13,10 @@ public static class Blocks
     public enum BLOCKS_BY_NAME
     {
         DIRT_BLOCK,
-        GRASS_BLOCK
+        GRASS_BLOCK,
+        STONE,
+        LOG,
+        LEAVES
     }
 
     public static void LoadResources()
@@ -53,7 +56,9 @@ public static class Blocks
         spriteMap.Apply();
 
         Material spriteMaterial = (Material)Resources.Load("Blocks/SpriteMaterial");
+        Material transparentSpriteMaterial = (Material)Resources.Load("Blocks/TransparentSpriteMaterial");
         spriteMaterial.mainTexture = spriteMap;
+        transparentSpriteMaterial.mainTexture = spriteMap;
 
         List<ResourceBlock> tempBlocks = new List<ResourceBlock>();
         for (int i = 0; i < blocks.Length; i++)
@@ -80,7 +85,7 @@ public static class Blocks
                 texPosMax[s] = new Vector2((texPosX * 16f + 16f) / spriteMapWidth, (texPosY * 16f + 16f) / spriteMapHeight);
             }
 
-            tempBlocks.Add(new ResourceBlock(blocks[i].id, blocks[i].name, texPosMin, texPosMax, blocks[i].sixSided));
+            tempBlocks.Add(new ResourceBlock(blocks[i], texPosMin, texPosMax));
         }
 
         BLOCKS = new ResourceBlock[tempBlocks.Count];

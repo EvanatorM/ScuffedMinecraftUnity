@@ -10,12 +10,16 @@ public class ResourceBlock
     public Vector2[] texPosMax;
     public bool sixSided;
 
-    public ResourceBlock(int id, string blockName, Vector2[] texPosMin, Vector2[] texPosMax, bool sixSided)
+    public bool transparent;
+
+    public ResourceBlock(Block block, Vector2[] texPosMin, Vector2[] texPosMax)
     {
-        this.id = id;
-        this.blockName = blockName;
+        id = block.id;
+        blockName = block.blockName;
         this.texPosMin = texPosMin;
         this.texPosMax = texPosMax;
-        this.sixSided = sixSided;
+        sixSided = block.sixSided;
+
+        transparent = block.transparent;
     }
 }

@@ -9,4 +9,6 @@ public class Block : ScriptableObject
     public string blockName;
     public Texture2D[] sideSprite;
     public bool sixSided;
+
+    public bool transparent;
 }

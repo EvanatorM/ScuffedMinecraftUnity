@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8c6ad4c0eef3b344adb821accb57657, type: 3}
+  m_Name: Stone Block
+  m_EditorClassIdentifier: 
+  id: 2
+  blockName: Stone Block
+  sideSprite:
+  - {fileID: 2800000, guid: d8f40434b13454040baa519bc545e8be, type: 3}
+  sixSided: 0
