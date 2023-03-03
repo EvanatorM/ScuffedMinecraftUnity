@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
+using UnityEngine.ParticleSystemJobs;
+using static UnityEngine.Rendering.VirtualTexturing.Debugging;
 
 public enum Direction
 {
@@ -26,7 +29,7 @@ public class World : MonoBehaviour
 
     [SerializeField] Chunk chunkPrefab;
     [SerializeField] Vector3 worldSize;
-    [SerializeField] Vector3Int chunkSize;
+    [SerializeField] int chunkSize;
     [SerializeField] Vector3Int worldChunkOffset;
 
     [SerializeField] int seed;
@@ -43,10 +46,13 @@ public class World : MonoBehaviour
 
     Dictionary<Vector3Int, ChunkData> chunkData = new Dictionary<Vector3Int, ChunkData>();
 
-    List<Vector3Int> chunkQueue = new List<Vector3Int>();
-    bool generatingChunk = false;
+    [SerializeField] List<Vector3Int> chunkDataQueue = new List<Vector3Int>();
+    [SerializeField] List<Vector3Int> chunkDataGenerating = new List<Vector3Int>();
+    [SerializeField] List<Vector3Int> chunkObjectQueue = new List<Vector3Int>();
 
     public static World Instance;
+
+    bool initalGenerating = true;
 
     private void Awake()
     {
@@ -57,13 +63,74 @@ public class World : MonoBehaviour
 
     void Start()
     {
-        GenerateChunkData();
+        WorldGen.surfaceNoiseSettings = noiseSettings;
+        WorldGen.undergroundNoiseSettings = undergroundSettings;
+        WorldGen.undergroundSettingsBlock = undergroundSettingsBlock;
 
-        GenerateWorld();
+        for (int y = 0; y < worldSize.y; y++)
+        {
+            for (int z = 0; z < worldSize.z; z++)
+            {
+                for (int x = 0; x < worldSize.x; x++)
+                {
+                    Vector3Int chunkPos = new Vector3Int((x + worldChunkOffset.x), (y + worldChunkOffset.y), (z + worldChunkOffset.z));
+
+                    chunkObjectQueue.Add(chunkPos);
+                }
+            }
+        }
+
+        //GenerateChunkData();
+
+        //GenerateWorld();
     }
 
-    /*void Update()
+    void Update()
     {
+        for (int i = 0; i < chunkDataQueue.Count; i++)
+        {
+            if (chunkData.ContainsKey(chunkDataQueue[i]))
+            {
+                Debug.LogWarning($"Trying to generate chunk data that already exists: {chunkDataQueue[i]}");
+                chunkDataQueue.RemoveAt(i);
+                i--;
+                continue;
+            }
+
+            if (chunkDataGenerating.Contains(chunkDataQueue[i]))
+                continue;
+
+            chunkDataGenerating.Add(chunkDataQueue[i]);
+            StartCoroutine(GenerateChunkFromQueue(chunkDataQueue[i]));
+        }
+
+        for (int i = 0; i < chunkObjectQueue.Count; i++)
+        {
+            if (chunkData.ContainsKey(chunkObjectQueue[0]))
+            {
+                Vector3Int chunkPos = new Vector3Int(chunkObjectQueue[0].x * chunkSize, 
+                    chunkObjectQueue[0].y * chunkSize, chunkObjectQueue[0].z * chunkSize);
+                CreateChunkObject(chunkObjectQueue[0], chunkPos);
+                chunkObjectQueue.RemoveAt(0);
+                i--;
+            }
+            else
+            {
+                if (!chunkDataQueue.Contains(chunkObjectQueue[0]))
+                    chunkDataQueue.Add(chunkObjectQueue[0]);
+            }
+        }
+
+        if (initalGenerating && chunkObjectQueue.Count == 0)
+        {
+            initalGenerating = false;
+            Debug.Log("Generation Finished in " + Time.time + " seconds");
+        }
+
+        if (initalGenerating)
+            return;
+
+        // Render distance
         for (int y = -viewDistance; y <= viewDistance; y++)
         {
             for (int x = -viewDistance; x <= viewDistance; x++)
@@ -71,17 +138,18 @@ public class World : MonoBehaviour
                 for (int z = -viewDistance; z <= viewDistance; z++)
                 {
                     Vector3Int playerChunkPos = new Vector3Int(Mathf.FloorToInt(player.transform.position.x / 16), Mathf.FloorToInt(player.transform.position.y / 16), Mathf.FloorToInt(player.transform.position.z / 16));
-                    Vector3Int playerPos = new Vector3Int(x + playerChunkPos.x, y + playerChunkPos.y, z + playerChunkPos.z);
+                    Vector3Int chunkRenderPos = new Vector3Int(x + playerChunkPos.x, y + playerChunkPos.y, z + playerChunkPos.z);
 
-                    if (loadedChunksPos.Contains(playerPos))
+                    if (Vector3Int.Distance(playerChunkPos, chunkRenderPos) > viewDistance)
                         continue;
 
-                    if (!chunkData.ContainsKey(playerPos))
-                        GenerateChunk(playerPos);
+                    if (loadedChunksPos.Contains(chunkRenderPos))
+                        continue;
 
-                    chunkQueue.Add(playerPos);
+                    if (chunkObjectQueue.Contains(chunkRenderPos))
+                        continue;
 
-                    //CreateChunkObject(playerPos, playerPos * chunkSize);
+                    chunkObjectQueue.Add(chunkRenderPos);
                 }
             }
         }
@@ -91,79 +159,120 @@ public class World : MonoBehaviour
             Vector3Int playerChunkPos = new Vector3Int(Mathf.FloorToInt(player.transform.position.x / 16f), Mathf.FloorToInt(player.transform.position.y / 16f), Mathf.FloorToInt(player.transform.position.z / 16f));
             Vector3Int dist = new Vector3Int(Mathf.Abs(playerChunkPos.x - loadedChunksPos[i].x), Mathf.Abs(playerChunkPos.y - loadedChunksPos[i].y), Mathf.Abs(playerChunkPos.z - loadedChunksPos[i].z));
 
-            if (dist.x > viewDistance ||
-                dist.y > viewDistance ||
-                dist.z > viewDistance)
+            if (Vector3Int.Distance(playerChunkPos, loadedChunksPos[i]) > viewDistance)
             {
                 Destroy(loadedChunks[i].gameObject);
                 loadedChunks.RemoveAt(i);
                 loadedChunksPos.RemoveAt(i);
+                i--;
             }
         }
-
-        if (!generatingChunk && chunkQueue.Count > 0)
-            StartCoroutine(RunChunkQueue());
     }
 
-    IEnumerator RunChunkQueue()
+    IEnumerator GenerateChunkFromQueue(Vector3Int chunkPos)
     {
-        generatingChunk = true;
+        NativeArray<int> blocks = new NativeArray<int>(chunkSize * chunkSize * chunkSize, Allocator.TempJob);
 
-        bool canGenerate = false;
-        while (chunkQueue.Count > 0 && !canGenerate)
+        float[] undergroundChanceArray = new float[undergroundSettings.Length];
+        for (int i = 0; i < undergroundSettings.Length; i++)
+            undergroundChanceArray[i] = undergroundSettings[i].chance;
+        int[] undergroundMaxHeightArray = new int[undergroundSettings.Length];
+        for (int i = 0; i < undergroundSettings.Length; i++)
+            undergroundChanceArray[i] = undergroundSettings[i].maxHeight;
+        NativeArray<float> undergroundChance = new NativeArray<float>(undergroundChanceArray, Allocator.TempJob);
+        NativeArray<int> undergroundMaxHeight = new NativeArray<int>(undergroundMaxHeightArray, Allocator.TempJob);
+        NativeArray<int> undergroundBlock = new NativeArray<int>(undergroundSettingsBlock, Allocator.TempJob);
+
+        GenerateChunkJob chunkJob = new GenerateChunkJob();
+        chunkJob.seed = seed;
+        chunkJob.chunkX = chunkPos.x;
+        chunkJob.chunkY = chunkPos.y;
+        chunkJob.chunkZ = chunkPos.z;
+        chunkJob.chunkSize = chunkSize;
+
+        chunkJob.blocks = blocks;
+
+        JobHandle handle = chunkJob.Schedule();
+
+        yield return new WaitUntil(() => handle.IsCompleted);
+
+        handle.Complete();
+
+        // Chunk done generating
+        ChunkData chunk = new ChunkData();
+        chunk.chunkNum = chunkPos;
+        chunk.blocks = new int[chunkSize, chunkSize, chunkSize];
+
+        for (int i = 0; i < blocks.Length; i++)
         {
-            Vector3Int playerChunkPos = new Vector3Int(Mathf.FloorToInt(player.transform.position.x / 16f), Mathf.FloorToInt(player.transform.position.y / 16f), Mathf.FloorToInt(player.transform.position.z / 16f));
-            Vector3Int dist = new Vector3Int(Mathf.Abs(playerChunkPos.x - chunkQueue[0].x), Mathf.Abs(playerChunkPos.y - chunkQueue[0].y), Mathf.Abs(playerChunkPos.z - chunkQueue[0].z));
-
-            if (dist.x > viewDistance ||
-                dist.y > viewDistance ||
-                dist.z > viewDistance)
-            {
-                chunkQueue.RemoveAt(0);
-            }
-            else
-                canGenerate = true;
+            int blockX = i % 16;
+            int blockY = i % 256 / 16;
+            int blockZ = i / 256;
+            chunk.blocks[blockX, blockY, blockZ] = blocks[i];
         }
-        CreateChunkObject(chunkQueue[0], chunkQueue[0] * chunkSize);
-        chunkQueue.RemoveAt(0);
 
-        yield return null;
+        chunkData.Add(chunkPos, chunk);
 
-        generatingChunk = false;
-    }*/
+        blocks.Dispose();
+        undergroundChance.Dispose();
+        undergroundMaxHeight.Dispose();
+        undergroundBlock.Dispose();
+        chunkDataQueue.Remove(chunkPos);
+        chunkDataGenerating.Remove(chunkPos);
+    }
 
-    void GenerateChunkData()
+    public struct GenerateChunkJob : IJob
     {
-        for (int y = 0; y < worldSize.y; y++)
+        // Chunk Values
+        public int seed;
+        public int chunkX;
+        public int chunkY;
+        public int chunkZ;
+        public int chunkSize;
+
+        // Output
+        public NativeArray<int> blocks;
+
+        public void Execute()
         {
-            for (int z = 0; z < worldSize.z; z++)
+            for (int y = 0; y < chunkSize; y++)
             {
-                for (int x = 0; x < worldSize.x; x++)
+                int blockY = y + (chunkY * chunkSize);
+
+                for (int z = 0; z < chunkSize; z++)
                 {
-                    GenerateChunk(new Vector3Int(x, y, z) + worldChunkOffset);
+                    int blockZ = z + (chunkZ * chunkSize);
+
+                    for (int x = 0; x < chunkSize; x++)
+                    {
+                        int blockX = x + (chunkX * chunkSize);
+                        int blockIndex = z * chunkSize * chunkSize + y * chunkSize + x;
+
+                        blocks[blockIndex] = WorldGen.GetBlockAtPos(blockX, blockY, blockZ, seed);
+                    }
                 }
             }
         }
     }
 
-    ChunkData GenerateChunk(Vector3Int chunkPos)
+    /*ChunkData GenerateChunk(Vector3Int chunkPos)
     {
         ChunkData chunk = new ChunkData();
         chunk.chunkNum = chunkPos;
 
-        int[,,] blocks = new int[chunkSize.x, chunkSize.y, chunkSize.z];
+        int[,,] blocks = new int[chunkSize, chunkSize, chunkSize];
 
-        for (int y = 0; y < chunkSize.y; y++)
+        for (int y = 0; y < chunkSize; y++)
         {
-            int blockY = y + (chunkPos.y * chunkSize.y);
+            int blockY = y + (chunkPos.y * chunkSize);
 
-            for (int z = 0; z < chunkSize.z; z++)
+            for (int z = 0; z < chunkSize; z++)
             {
-                int blockZ = z + (chunkPos.z * chunkSize.z);
+                int blockZ = z + (chunkPos.z * chunkSize);
 
-                for (int x = 0; x < chunkSize.x; x++)
+                for (int x = 0; x < chunkSize; x++)
                 {
-                    int blockX = x + (chunkPos.x * chunkSize.x);
+                    int blockX = x + (chunkPos.x * chunkSize);
                     
                     // Get height at position
                     int height = Mathf.RoundToInt(Noise.GetHeight(seed, noiseSettings, blockX, blockZ));
@@ -174,7 +283,9 @@ public class World : MonoBehaviour
                         blocks[x, y, z] = (int)Blocks.BLOCKS_BY_NAME.STONE;
                     else if (blockY < height) // Less than height (Dirt Layer)
                         blocks[x, y, z] = (int)Blocks.BLOCKS_BY_NAME.DIRT_BLOCK;
-                    else // Greater than height (Air)
+                    else
+                        blocks[x, y, z] = -1;
+                    /*else // Greater than height (Air)
                     {
                         float tree = Noise.GetHeight(seed, treeSettings, blockX, blockZ);
                         System.Random rand = new System.Random(seed + (int)(tree * 5) + blockX + blockZ);
@@ -253,9 +364,9 @@ public class World : MonoBehaviour
         chunkData.Add(chunkPos, chunk);
 
         return chunk;
-    }
+    }*/
 
-    void GenerateWorld()
+    /*void GenerateWorld()
     {
         for (int y = 0; y < worldSize.y; y++)
         {
@@ -263,13 +374,13 @@ public class World : MonoBehaviour
             {
                 for (int x = 0; x < worldSize.x; x++)
                 {
-                    Vector3Int chunkPos = new Vector3Int((x + worldChunkOffset.x) * chunkSize.x, (y + worldChunkOffset.y) * chunkSize.y, (z + worldChunkOffset.z) * chunkSize.z);
+                    Vector3Int chunkPos = new Vector3Int((x + worldChunkOffset.x) * chunkSize, (y + worldChunkOffset.y) * chunkSize, (z + worldChunkOffset.z) * chunkSize);
 
                     CreateChunkObject(new Vector3Int(x, y, z) + worldChunkOffset, chunkPos);
                 }
             }
         }
-    }
+    }*/
 
     void CreateChunkObject(Vector3Int chunkNum, Vector3Int chunkPos)
     {
@@ -310,7 +421,10 @@ public class World : MonoBehaviour
         if (chunkData.ContainsKey(checkPos))
             return chunkData[checkPos];
 
-        return GenerateChunk(checkPos);
+        // Chunk doesn't exist
+        if (!chunkDataQueue.Contains(checkPos))
+            chunkDataQueue.Add(checkPos);
+        return null;
     }
 
     public void ReloadChunk(Vector3Int chunkPos)

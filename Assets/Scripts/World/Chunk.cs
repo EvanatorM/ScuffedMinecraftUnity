@@ -14,15 +14,27 @@ public class Chunk : MonoBehaviour
     int vert = 0;
 
     ChunkData chunkData;
-    Vector3Int chunkSize;
+    int chunkSize;
     MeshFilter meshFilter;
 
-    public void InitChunk(ChunkData chunkData, Vector3Int chunkSize)
+    public void InitChunk(ChunkData chunkData, int chunkSize)
     {
         this.chunkData = chunkData;
         this.chunkSize = chunkSize;
 
         meshFilter = GetComponent<MeshFilter>();
+
+        StartCoroutine(WaitForNeighbors());
+    }
+
+    IEnumerator WaitForNeighbors()
+    {
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.North) != null);
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.East) != null);
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.South) != null);
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.West) != null);
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.Up) != null);
+        yield return new WaitUntil(() => World.Instance.GetNeighboringChunk(chunkData, Direction.Down) != null);
 
         GenerateChunk();
     }
@@ -42,11 +54,11 @@ public class Chunk : MonoBehaviour
         transparentTriangles = new List<int>();
         vert = 0;
 
-        for (int y = 0; y < chunkSize.y; y++)
+        for (int y = 0; y < chunkSize; y++)
         {
-            for (int z = 0; z < chunkSize.z; z++)
+            for (int z = 0; z < chunkSize; z++)
             {
-                for (int x = 0; x < chunkSize.x; x++)
+                for (int x = 0; x < chunkSize; x++)
                 {
                     if (chunkData.blocks[x, y, z] == -1)
                         continue;
@@ -74,7 +86,7 @@ public class Chunk : MonoBehaviour
 
     void GenerateCube(Vector3Int cubePos, ResourceBlock block)
     {
-        if (cubePos.z < chunkSize.z - 1)
+        if (cubePos.z < chunkSize - 1)
         {
             int checkBlock = chunkData.blocks[cubePos.x, cubePos.y, cubePos.z + 1];
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
@@ -87,7 +99,7 @@ public class Chunk : MonoBehaviour
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.North, cubePos, block, block.sixSided);
         }
-        if (cubePos.x < chunkSize.x - 1)
+        if (cubePos.x < chunkSize - 1)
         {
             int checkBlock = chunkData.blocks[cubePos.x + 1, cubePos.y, cubePos.z];
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
@@ -109,7 +121,7 @@ public class Chunk : MonoBehaviour
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.South);
-            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, cubePos.y, chunkSize.z - 1] : -1;
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, cubePos.y, chunkSize - 1] : -1;
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.South, cubePos, block, block.sixSided);
         }
@@ -122,11 +134,11 @@ public class Chunk : MonoBehaviour
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.West);
-            int checkBlock = neighbor != null ? neighbor.blocks[chunkSize.x - 1, cubePos.y, cubePos.z] : -1;
+            int checkBlock = neighbor != null ? neighbor.blocks[chunkSize - 1, cubePos.y, cubePos.z] : -1;
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.West, cubePos, block, block.sixSided);
         }
-        if (cubePos.y < chunkSize.y - 1)
+        if (cubePos.y < chunkSize - 1)
         {
             int checkBlock = chunkData.blocks[cubePos.x, cubePos.y + 1, cubePos.z];
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
@@ -148,7 +160,7 @@ public class Chunk : MonoBehaviour
         else
         {
             ChunkData neighbor = World.Instance.GetNeighboringChunk(chunkData, Direction.Down);
-            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, chunkSize.y - 1, cubePos.z] : -1;
+            int checkBlock = neighbor != null ? neighbor.blocks[cubePos.x, chunkSize - 1, cubePos.z] : -1;
             if (checkBlock == -1 || (Blocks.BLOCKS[checkBlock].transparent && !block.transparent))
                 GenerateCubeFace(Direction.Down, cubePos, block, block.sixSided);
         }
@@ -300,15 +312,15 @@ public class Chunk : MonoBehaviour
         switch (dir)
         {
             case Direction.North:
-                return blockPos.z == chunkSize.z - 1;
+                return blockPos.z == chunkSize - 1;
             case Direction.South:
                 return blockPos.z == 0;
             case Direction.East:
-                return blockPos.x == chunkSize.x - 1;
+                return blockPos.x == chunkSize - 1;
             case Direction.West:
                 return blockPos.x == 0;
             case Direction.Up:
-                return blockPos.y == chunkSize.y - 1;
+                return blockPos.y == chunkSize - 1;
             case Direction.Down:
                 return blockPos.y == 0;
         }

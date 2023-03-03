@@ -34,6 +34,8 @@ public class Player : MonoBehaviour
         float z = Input.GetAxis("Vertical");
 
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        if (isGrounded && velocity.y < 0f)
+            velocity.y = -2f;
 
         Vector3 move = transform.right * x + transform.forward * z;
 
