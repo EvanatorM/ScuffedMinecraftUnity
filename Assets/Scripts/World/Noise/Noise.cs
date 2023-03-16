@@ -2,26 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class NoiseSettings
-{
-    public float scale = 1f;
-    public float yScale = 1f;
-
-    public int octaves = 4;
-    [Range(0, 1)]
-    public float persistance = 0.5f;
-    public float lacunarity = 2f;
-
-    public float amplitude = 1;
-    public float frequency = 1;
-
-    public Vector3 offset;
-
-    public float chance;
-    public int maxHeight;
-}
-
 public static class Noise
 {
     public static float GetHeight(int seed, NoiseSettings settings, float x, float z)
@@ -51,7 +31,36 @@ public static class Noise
             frequency *= settings.lacunarity;
         }
 
-        return noiseHeight * settings.yScale;
+        return Mathf.LerpUnclamped(settings.yMin, settings.yMax, noiseHeight);
+    }
+    public static float GetHeight(int seed, NoiseSettings settings, float x, float z, float minHeight, float maxHeight)
+    {
+        System.Random prng = new System.Random(seed);
+        Vector2[] octaveOffsets = new Vector2[settings.octaves];
+        for (int i = 0; i < settings.octaves; i++)
+        {
+            float offsetX = prng.Next(-100000, 100000) + settings.offset.x;
+            float offsetY = prng.Next(-100000, 100000) + settings.offset.y;
+            octaveOffsets[i] = new Vector2(offsetX, offsetY);
+        }
+
+        float amplitude = settings.amplitude;
+        float frequency = settings.frequency;
+        float noiseHeight = 0;
+
+        for (int i = 0; i < settings.octaves; i++)
+        {
+            float sampleX = x / settings.scale * frequency + octaveOffsets[i].x;
+            float sampleY = z / settings.scale * frequency + octaveOffsets[i].y;
+
+            float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
+            noiseHeight += perlinValue * amplitude;
+
+            amplitude *= settings.persistance;
+            frequency *= settings.lacunarity;
+        }
+
+        return Mathf.LerpUnclamped(minHeight, maxHeight, noiseHeight);
     }
 
     public static float GetNoise3D(int seed, NoiseSettings settings, float x, float y, float z)
@@ -83,7 +92,7 @@ public static class Noise
             frequency *= settings.lacunarity;
         }
 
-        return noiseHeight * settings.yScale;
+        return noiseHeight * settings.yMin;
     }
 
     public static float PerlinNoise3D(float x, float y, float z)

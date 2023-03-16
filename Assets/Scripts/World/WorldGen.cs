@@ -4,24 +4,56 @@ using UnityEngine;
 
 public static class WorldGen
 {
-    public static NoiseSettings surfaceNoiseSettings;
-    public static NoiseSettings[] undergroundNoiseSettings;
-    public static int[] undergroundSettingsBlock;
+    public static NoiseSettings[] surfaceNoiseSettings;
+    public static NoiseSettings temperatureSettings, humiditySettings;
+    public static UndergroundNoiseSettings[] undergroundNoiseSettings;
 
     public static int GetBlockAtPos(int x, int y, int z, int seed)
     {
         int block;
+
+        // Get Biome
+        float temperature = Noise.GetHeight(seed, temperatureSettings, x, z);
+        float humidity = Noise.GetHeight(seed, humiditySettings, x, z);
+
+        int bX = GetClosestNumber(temperature, new float[] { 0f, 0.5f, 1f });
+        int bY = GetClosestNumber(humidity, new float[] { 0f, 0.5f, 1f });
+        //Debug.Log($"Temperature: {bX} ({temperature}), Humidity: {bY} ({humidity})");
+
+        float minHeight = 0;
+        float maxHeight = 0;
+
+        for (int checkX = x - 5; checkX <= x + 5; checkX += 5)
+        {
+            for (int checkZ = z - 5; checkZ <= z + 5; checkZ += 5)
+            {
+
+                float cTemperature = Noise.GetHeight(seed, temperatureSettings, checkX, checkZ);
+                float cHumidity = Noise.GetHeight(seed, humiditySettings, checkX, checkZ);
+
+                int cX = GetClosestNumber(cTemperature, new float[] { 0f, 0.5f, 1f });
+                int cY = GetClosestNumber(cHumidity, new float[] { 0f, 0.5f, 1f });
+
+                minHeight += surfaceNoiseSettings[cY * 3 + cX].yMin;
+                maxHeight += surfaceNoiseSettings[cY * 3 + cX].yMax;
+            }
+        }
+
+        minHeight /= 9f;
+        maxHeight /= 9f;
+
         // Get height at position
-        int height = Mathf.RoundToInt(Noise.GetHeight(seed, surfaceNoiseSettings, x, z));
+        int height = Mathf.RoundToInt(Noise.GetHeight(seed, surfaceNoiseSettings[bY * 3 + bX], x, z, minHeight, maxHeight));
 
         if (y == height) // Equal to height (Grass Layer)
-            block = (int)Blocks.BLOCKS_BY_NAME.GRASS_BLOCK;
+            block = surfaceNoiseSettings[bY * 3 + bX].topBlock;
         else if (y < height - 4) // Less than 4 blocks below height (Stone Layer)
             block = (int)Blocks.BLOCKS_BY_NAME.STONE;
         else if (y < height) // Less than height (Dirt Layer)
-            block = (int)Blocks.BLOCKS_BY_NAME.DIRT_BLOCK;
+            block = surfaceNoiseSettings[bY * 3 + bX].layer2Block;
         else
             block = -1;
+        #region Trees
         /*else // Greater than height (Air)
         {
             float tree = Noise.GetHeight(seed, treeSettings, blockX, blockZ);
@@ -80,6 +112,7 @@ public static class WorldGen
                 blocks[x, y, z] = leaves ? (int)Blocks.BLOCKS_BY_NAME.LEAVES : -1;
             }
         }*/
+        #endregion
 
         for (int i = 0; i < undergroundNoiseSettings.Length; i++)
         {
@@ -87,11 +120,23 @@ public static class WorldGen
             {
                 if (y <= undergroundNoiseSettings[i].maxHeight)
                 {
-                    return undergroundSettingsBlock[i];
+                    return undergroundNoiseSettings[i].block;
                 }
             }
         }
 
         return block;
+    }
+
+    static int GetClosestNumber(float num, float[] numsClose)
+    {
+        int closestNum = 0;
+        for (int i = 1; i < numsClose.Length; i++)
+        {
+            if (Mathf.Abs(num - numsClose[i]) < Mathf.Abs(num - numsClose[closestNum]))
+                closestNum = i;
+        }
+
+        return closestNum;
     }
 }

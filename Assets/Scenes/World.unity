@@ -760,55 +760,29 @@ MonoBehaviour:
   worldChunkOffset: {x: -5, y: -2, z: -5}
   seed: 0
   noiseSettings:
-    scale: 70
-    yScale: 10
-    octaves: 4
-    persistance: 0.5
-    lacunarity: 2
-    amplitude: 1
-    frequency: 1
-    offset: {x: 0, y: 0, z: 0}
-    chance: 0
-    maxHeight: 0
-  treeSettings:
-    scale: 2
-    yScale: 1
-    octaves: 1
-    persistance: 0.5
-    lacunarity: 2
-    amplitude: 1
-    frequency: 1
-    offset: {x: 0, y: 0, z: 0}
-    chance: 0
-    maxHeight: 0
+  - {fileID: 11400000, guid: 1a78ba6d02766d847a441f6e5713e376, type: 2}
+  - {fileID: 11400000, guid: 7f5a5bdd29502cf4495ffc508b13fab9, type: 2}
+  - {fileID: 11400000, guid: 7f5a5bdd29502cf4495ffc508b13fab9, type: 2}
+  - {fileID: 11400000, guid: 1a78ba6d02766d847a441f6e5713e376, type: 2}
+  - {fileID: 11400000, guid: 366a3137255afe2479a0f1c6f8b483e6, type: 2}
+  - {fileID: 11400000, guid: 7f5a5bdd29502cf4495ffc508b13fab9, type: 2}
+  - {fileID: 11400000, guid: 1a78ba6d02766d847a441f6e5713e376, type: 2}
+  - {fileID: 11400000, guid: 1a78ba6d02766d847a441f6e5713e376, type: 2}
+  - {fileID: 11400000, guid: 7f5a5bdd29502cf4495ffc508b13fab9, type: 2}
+  temperatureNoise: {fileID: 11400000, guid: 6d8614ba84ac55144b9ea9f783b495da, type: 2}
+  humidityNoise: {fileID: 11400000, guid: 5551f0d97ba148a4e9a86b8818171acb, type: 2}
+  treeSettings: {fileID: 0}
   treeChance: 0.1
   undergroundSettings:
-  - scale: 70
-    yScale: 1
-    octaves: 4
-    persistance: 0.5
-    lacunarity: 2
-    amplitude: 1
-    frequency: 1
-    offset: {x: 0, y: 0, z: 0}
-    chance: 0.8
-    maxHeight: 100
-  - scale: 10
-    yScale: 1
-    octaves: 4
-    persistance: 0.5
-    lacunarity: 2
-    amplitude: 1
-    frequency: 1
-    offset: {x: 0, y: 0, z: 0}
-    chance: 0.65
-    maxHeight: 0
-  undergroundSettingsBlock: ffffffff05000000
+  - {fileID: 11400000, guid: 495a11787f2db9a459682bf8ded0f744, type: 2}
+  - {fileID: 11400000, guid: 7e982040a666bb846ae8b6c6b0370d9a, type: 2}
   minTreeHeight: 4
   maxTreeHeight: 8
   loadedChunks: []
   loadedChunksPos: []
-  chunkQueue: []
+  chunkDataQueue: []
+  chunkDataGenerating: []
+  chunkObjectQueue: []
 --- !u!4 &1893208942
 Transform:
   m_ObjectHideFlags: 0

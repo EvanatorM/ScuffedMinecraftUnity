@@ -33,11 +33,11 @@ public class World : MonoBehaviour
     [SerializeField] Vector3Int worldChunkOffset;
 
     [SerializeField] int seed;
-    [SerializeField] NoiseSettings noiseSettings;
+    [SerializeField, Tooltip("3x3, x = temperature, y = humidity")] NoiseSettings[] noiseSettings;
+    [SerializeField] NoiseSettings temperatureNoise, humidityNoise;
     [SerializeField] NoiseSettings treeSettings;
     [SerializeField] float treeChance;
-    [SerializeField] NoiseSettings[] undergroundSettings;
-    [SerializeField] int[] undergroundSettingsBlock;
+    [SerializeField] UndergroundNoiseSettings[] undergroundSettings;
     [SerializeField] int minTreeHeight;
     [SerializeField] int maxTreeHeight;
 
@@ -65,7 +65,8 @@ public class World : MonoBehaviour
     {
         WorldGen.surfaceNoiseSettings = noiseSettings;
         WorldGen.undergroundNoiseSettings = undergroundSettings;
-        WorldGen.undergroundSettingsBlock = undergroundSettingsBlock;
+        WorldGen.temperatureSettings = temperatureNoise;
+        WorldGen.humiditySettings = humidityNoise;
 
         for (int y = 0; y < worldSize.y; y++)
         {
@@ -125,6 +126,8 @@ public class World : MonoBehaviour
         {
             initalGenerating = false;
             Debug.Log("Generation Finished in " + Time.time + " seconds");
+
+            player.enabled = true;
         }
 
         if (initalGenerating)
@@ -173,15 +176,18 @@ public class World : MonoBehaviour
     {
         NativeArray<int> blocks = new NativeArray<int>(chunkSize * chunkSize * chunkSize, Allocator.TempJob);
 
-        float[] undergroundChanceArray = new float[undergroundSettings.Length];
+        /*float[] undergroundChanceArray = new float[undergroundSettings.Length];
         for (int i = 0; i < undergroundSettings.Length; i++)
             undergroundChanceArray[i] = undergroundSettings[i].chance;
         int[] undergroundMaxHeightArray = new int[undergroundSettings.Length];
         for (int i = 0; i < undergroundSettings.Length; i++)
             undergroundChanceArray[i] = undergroundSettings[i].maxHeight;
+        int[] undergroundSettingsBlock = new int[undergroundSettings.Length];
+        for (int i = 0; i < undergroundSettings.Length; i++)
+            undergroundSettingsBlock[i] = undergroundSettings[i].block;
         NativeArray<float> undergroundChance = new NativeArray<float>(undergroundChanceArray, Allocator.TempJob);
         NativeArray<int> undergroundMaxHeight = new NativeArray<int>(undergroundMaxHeightArray, Allocator.TempJob);
-        NativeArray<int> undergroundBlock = new NativeArray<int>(undergroundSettingsBlock, Allocator.TempJob);
+        NativeArray<int> undergroundBlock = new NativeArray<int>(undergroundSettingsBlock, Allocator.TempJob);*/
 
         GenerateChunkJob chunkJob = new GenerateChunkJob();
         chunkJob.seed = seed;
@@ -214,9 +220,9 @@ public class World : MonoBehaviour
         chunkData.Add(chunkPos, chunk);
 
         blocks.Dispose();
-        undergroundChance.Dispose();
-        undergroundMaxHeight.Dispose();
-        undergroundBlock.Dispose();
+        //undergroundChance.Dispose();
+        //undergroundMaxHeight.Dispose();
+        //undergroundBlock.Dispose();
         chunkDataQueue.Remove(chunkPos);
         chunkDataGenerating.Remove(chunkPos);
     }
